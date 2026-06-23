@@ -370,6 +370,7 @@
       <div class="row">
         <label for="email" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Email address</label>
         <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+        <input type="text" name="company" id="company" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
         <button type="submit" class="btn btn-tomato">Notify Me</button>
       </div>
       <p class="hint">No spam, ever &mdash; just one note when kits go live.</p>
@@ -409,6 +410,7 @@
     var form = document.getElementById('signup');
     var msg  = document.getElementById('formMsg');
     var input = document.getElementById('email');
+    var hp = document.getElementById('company');
     if (!form) return;
     form.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -420,9 +422,22 @@
         input.focus();
         return;
       }
+      var btn = form.querySelector('button[type=submit]');
+      if (btn) btn.disabled = true;
       msg.style.color = '#1C2B36';
-      msg.textContent = 'Thanks for your interest! 🍕 We’re just finishing our waitlist — check back very soon to save your spot.';
-      form.reset();
+      msg.textContent = 'One sec…';
+      fetch('https://avapizzakit-signup-production.up.railway.app/signup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: v, company: (hp && hp.value) || '' })
+      }).then(function (r) {
+        if (!r.ok) throw new Error('bad');
+        msg.style.color = '#1C2B36';
+        msg.textContent = "You’re on the list! 🍕 We’ll email you the moment kits are ready.";
+        form.reset();
+      }).catch(function () {
+        msg.style.color = '#9E3A24';
+        msg.textContent = 'Hmm, that didn’t go through — please try again in a moment.';
+      }).finally(function () { if (btn) btn.disabled = false; });
     });
   })();
 </script>
