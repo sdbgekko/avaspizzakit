@@ -174,11 +174,15 @@
   .cta .lead { margin: 0 auto 30px; max-width: 34em; }
   .cta-form { max-width: 520px; margin: 0 auto; }
   .cta-form .row { display: flex; gap: 12px; flex-wrap: wrap; }
-  .cta-form input[type=email] {
-    flex: 1 1 240px; min-width: 0; font-family: var(--sans); font-size: 16px;
+  .cta-form .row + .row { margin-top: 12px; }
+  .cta-form input.fld {
+    flex: 1 1 160px; min-width: 0; font-family: var(--sans); font-size: 16px;
     padding: 16px 18px; border: 2px solid var(--gold); border-radius: 999px; background: var(--cream); color: var(--navy);
     min-height: 52px;
   }
+  .cta-form input#email { flex-basis: 100%; }
+  .cta-form input.zip { flex: 1 1 120px; }
+  .cta-form .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
   .cta-form input::placeholder { color: var(--ink-soft); }
   .cta-form .hint { font-size: 13px; color: var(--ink-soft); margin: 14px 0 0; font-style: italic; }
   .form-msg { font-family: var(--sans); font-size: 15px; color: var(--tomato-dk); margin-top: 16px; min-height: 1.2em; font-weight: 600; }
@@ -368,13 +372,23 @@
     <p class="lead">We&rsquo;re firing up the first batch of kits now. Leave your email and we&rsquo;ll let you know the moment you can order &mdash; plus a launch-day treat for early families.</p>
     <form class="cta-form" id="signup" novalidate>
       <div class="row">
-        <label for="email" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Email address</label>
-        <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+        <label for="firstName" class="sr">First name</label>
+        <input type="text" class="fld" id="firstName" name="firstName" placeholder="First name" autocomplete="given-name" required>
+        <label for="lastName" class="sr">Last name</label>
+        <input type="text" class="fld" id="lastName" name="lastName" placeholder="Last name" autocomplete="family-name" required>
+      </div>
+      <div class="row">
+        <label for="email" class="sr">Email address</label>
+        <input type="email" class="fld" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+      </div>
+      <div class="row">
+        <label for="zip" class="sr">ZIP code</label>
+        <input type="text" class="fld zip" id="zip" name="zip" placeholder="ZIP code" inputmode="numeric" autocomplete="postal-code" maxlength="10" required>
         <input type="text" name="company" id="company" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
         <button type="submit" class="btn btn-tomato">Notify Me</button>
       </div>
       <p class="hint">No spam, ever &mdash; just one note when kits go live.</p>
-      <p style="text-align:center; font-style:italic; font-family:'Marcellus',serif; font-size:32px; margin:22px 0 0; color:var(--ink-soft);">Let&rsquo;s get you back to the kitchen.</p>
+      <p style="text-align:center; font-style:italic; font-family:'Marcellus',serif; font-size:clamp(24px,4.4vw,34px); margin:18px 0 0; color:var(--ink-soft);">Let&rsquo;s get you back to the kitchen.</p>
       <p class="form-msg" id="formMsg" role="status" aria-live="polite"></p>
     </form>
   </div>
@@ -406,38 +420,37 @@
 </footer>
 
 <script>
-  // Demo-only sign-up handler — no backend yet, just confirms to the visitor.
+  // Sign-up handler — collects first name, last name, email, ZIP; posts to signup backend.
   (function () {
     var form = document.getElementById('signup');
     var msg  = document.getElementById('formMsg');
-    var input = document.getElementById('email');
+    var fn = document.getElementById('firstName'), ln = document.getElementById('lastName');
+    var em = document.getElementById('email'), zip = document.getElementById('zip');
     var hp = document.getElementById('company');
     if (!form) return;
+    function fail(el, t) { msg.style.color = '#9E3A24'; msg.textContent = t; if (el) el.focus(); }
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      var v = (input.value || '').trim();
-      var ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-      if (!ok) {
-        msg.style.color = '#9E3A24';
-        msg.textContent = 'Please enter a valid email so we can reach you.';
-        input.focus();
-        return;
-      }
+      var first = (fn.value || '').trim(), last = (ln.value || '').trim();
+      var mail  = (em.value || '').trim(), z    = (zip.value || '').trim();
+      if (!first) return fail(fn, 'Please add your first name.');
+      if (!last)  return fail(ln, 'Please add your last name.');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return fail(em, 'Please enter a valid email so we can reach you.');
+      if (!/^\d{5}(-\d{4})?$/.test(z)) return fail(zip, 'Please enter a valid ZIP code.');
       var btn = form.querySelector('button[type=submit]');
       if (btn) btn.disabled = true;
       msg.style.color = '#1C2B36';
       msg.textContent = 'One sec…';
       fetch('https://avapizzakit-signup-production.up.railway.app/signup', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: v, company: (hp && hp.value) || '' })
+        body: JSON.stringify({ firstName: first, lastName: last, email: mail, zip: z, company: (hp && hp.value) || '' })
       }).then(function (r) {
         if (!r.ok) throw new Error('bad');
         msg.style.color = '#1C2B36';
         msg.textContent = "You’re on the list! 🍕 We’ll email you the moment kits are ready.";
         form.reset();
       }).catch(function () {
-        msg.style.color = '#9E3A24';
-        msg.textContent = 'Hmm, that didn’t go through — please try again in a moment.';
+        fail(null, 'Hmm, that didn’t go through — please try again in a moment.');
       }).finally(function () { if (btn) btn.disabled = false; });
     });
   })();
